@@ -24,6 +24,32 @@ variables:
   single_dollar_interpolation_identifier: (?:{{unicode_letter}}|[a-zA-Z_])(?:{{unicode_letter}}|[a-zA-Z0-9_])*
 scope: source.nextflow
 contexts:
+  ternary-true-branch:
+    - meta_scope: meta.evaluation.ternary.nextflow
+    - match: ':'
+      scope: keyword.operator.ternary.expression-separator.nextflow
+      set: ternary-false-branch
+    - include: ternary-end
+    - include: block
+    - include: nextflow-code-minus-map-keys
+
+  ternary-false-branch:
+    - meta_scope: meta.evaluation.ternary.nextflow
+    - include: ternary-end
+    - match: (?=\S)
+      set: ternary-false-branch-body
+
+  ternary-false-branch-body:
+    - meta_scope: meta.evaluation.ternary.nextflow
+    - match: $
+      pop: true
+    - include: ternary-end
+    - include: block
+    - include: nextflow-code-minus-map-keys
+
+  ternary-end:
+    - match: (?=[})\],;])
+      pop: true
   # else-pop and immediately-pop from https://forum.sublimetext.com/t/syntax-definitions-how-to-force-pop-out-of-the-stack/36376/4
   # convenience contexts for popping context off stack
   else-pop:
@@ -243,18 +269,11 @@ contexts:
       scope: punctuation.accessor.dot.nextflow
     - match: (?<=\S)\?\.(?=\S)
       scope: punctuation.accessor.nextflow
+    - match: \?(?=\s*(?:extends|super)\b|\s*>)
+      scope: keyword.operator.wildcard.nextflow
     - match: \?
       scope: keyword.operator.ternary.nextflow
-      push:
-        - meta_scope: meta.evaluation.ternary.nextflow
-        - match: ":"
-          scope: keyword.operator.ternary.expression-separator.nextflow
-        - match: \}
-          pop: true
-        - match: $
-          pop: true
-        - include: nextflow-code
-        - include: else-pop
+      push: ternary-true-branch
     - match: "==~"
       scope: keyword.operator.match.nextflow
     - match: "=~"
@@ -781,10 +800,6 @@ contexts:
               scope: punctuation.section.embedded.nextflow
               pop: true
             - include: escaped-end-of-line
-            # we don't consume the newline here, so that
-            # the outer scope handles it and pops correctly
-            - match: '(?=\n)'
-              pop: true
             - include: nextflow-code
         # anything else following a dollar sign is not a valid interpolation
         - match: \$(?=")
